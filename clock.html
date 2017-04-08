@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>CLOCK</title>
+</head>
+
+<body>
+  <canvas id="clock"></canvas>
+  <script type="text/javascript">
+    window.onload = function() {
+      // 获取画布
+      let canvas = document.querySelector('#clock')
+      // 获取2D上下文对象
+      let cxt = canvas.getContext('2d')
+      // 画布宽高
+      let W = canvas.width = window.innerWidth
+      let H = canvas.height = window.innerHeight
+      // 文字每次递增位置的大小
+      let gridX = 7
+      let gridY = 7
+      // 粒子颜色
+      let colors = ['#f44336', '#e91e63', '#9c27b0', '#673ab7', '#3f51b5',
+        '#2196f3', '#03a9f4', '#00bcd4', '#009688', '#4CAF50',
+        '#8BC34A', '#CDDC39', '#FFEB3B', '#FFC107', '#FF9800',
+        '#FF5722'
+      ]
+      // 粒子每次递增半径的大小
+      let durVal = 0.1
+
+      // 粒子
+      class Particle {
+        constructor(x, y) {
+          // 圆心位置
+          this.x = x
+          this.y = y
+          this.base = [x, y]
+          // 随机例子颜色
+          this.color = colors[randomInt(0, colors.length - 1)]
+          // 随机例子最大半径
+          this.maxRadius = randomInt(1, 10)
+          // 半径
+          this.radius = 10
+          // 消亡
+          this.dying = false
+        }
+
+        // 绘制粒子
+        drawParticle() {
+          // 当前粒子变小到一定程度之后，每次将它的半径+0.1，使其慢慢变大
+          if (this.radius < this.maxRadius && !this.dying) {
+            this.radius += durVal
+          } else {
+            // 若粒子已达最大状态，则使其消亡
+            this.dying = true
+          }
+
+          // 若为消亡状态，则每次减 0.1
+          if (this.dying) {
+            this.radius -= durVal
+          }
+
+          // 保存状态
+          cxt.save()
+          cxt.fillStyle = this.color
+          cxt.beginPath()
+          // 画圆
+          cxt.arc(this.x, this.y, this.radius, Math.PI * 2, false)
+          cxt.closePath()
+          cxt.fill()
+          // 状态回滚
+          cxt.restore()
+
+          // 若粒子消失，重置其状态
+          if (this.y < 0 || this.radius < 1) {
+            this.x = this.base[0]
+            this.y = this.base[1]
+            this.dying = false
+          }
+        }
+
+      }
+
+
+      // 时钟
+      class Clock {
+        constructor(x = W / 2, y = H / 2, r = 250, s = 20) {
+          // 圆心位置
+          this.x = x
+          this.y = y
+          // 半径
+          this.r = r
+          // 刻度长度
+          this.s = s
+          // 一分钟的角度
+          this.mAngle = (1 / 30) * Math.PI
+          // 一小时的角度
+          this.hAngle = (1 / 6) * Math.PI
+          // 时针长度
+          this.hLen = r / 2
+          // 分针长度
+          this.mLen = r / 3 * 2
+          // 秒针长度
+          this.sLen = r / 10 * 9
+          // 时钟位置
+          this.placement = []
+        }
+
+        // 绘制表盘圆心
+        drawCenter() {
+          cxt.save()
+          // 重新映射画布(0,0)位置
+          cxt.translate(this.x, this.y)
+          cxt.beginPath()
+          cxt.arc(0, 0, this.r / 20, 0, Math.PI * 2)
+          cxt.closePath()
+          cxt.fill()
+          cxt.stroke()
+          cxt.restore()
+        }
+
+        // 绘制表盘
+        drawBg() {
+          cxt.save()
+          cxt.translate(this.x, this.y)
+          cxt.beginPath()
+          cxt.arc(0, 0, this.r, 0, Math.PI * 2)
+          cxt.closePath()
+          // 绘制刻度
+          for (var i = 0; i < 12; i++) {
+            cxt.moveTo(this.r - this.s, 0)
+            cxt.lineTo(this.r, 0)
+            cxt.rotate(this.hAngle)
+          }
+          // 绘制时间(3,6,9,12)
+          cxt.font = 'bold 50px monaco'
+          cxt.fillText('3', 180, 10)
+          cxt.fillText('6', -10, 200)
+          cxt.fillText('9', -200, 10)
+          cxt.fillText('12', -16, -180)
+          cxt.stroke()
+          cxt.restore()
+        }
+
+        // 绘制指针
+        drawHand(time, handAngle, handLen) {
+          // 绘制时针
+          cxt.save()
+          cxt.translate(this.x, this.y)
+          cxt.rotate(3 / 2 * Math.PI)
+          cxt.rotate(time * handAngle)
+          cxt.beginPath()
+          cxt.moveTo(0, 0)
+          cxt.lineTo(handLen, 0)
+          cxt.stroke()
+          cxt.restore()
+        }
+
+        // 绘制时钟
+        drawClock() {
+          clear()
+          // 获取当前时间
+          let date = new Date()
+          let hours = date.getHours()
+          let minutes = date.getMinutes()
+          let seconds = date.getSeconds()
+          let hour = (hours > 12 ? hours - 12 : hours) + minutes / 60
+          let minute = minutes + seconds / 60
+          this.drawBg()
+          this.drawCenter()
+          // 绘制时针
+          this.drawHand(hour, this.hAngle, this.hLen)
+          // 绘制分针
+          this.drawHand(minute, this.mAngle, this.mLen)
+          // 绘制秒针
+          this.drawHand(seconds, this.mAngle, this.sLen)
+        }
+        getValue() {
+          // 复制画布上指定矩形的像素数据
+          let imageDate = cxt.getImageData(0, 0, W, H)
+          // data 属性返回一个对象，是一个8位无符号整数的数组Uint8ClampedArray
+          // buffer 只读属性，获取此数组引用的 ArrayBuffer
+          // 生成 Uint32视图
+          let buffer = new Uint32Array(imageDate.data.buffer)
+          // 抽样获取图像数据使用particle对象记录下当前像素下数据的位置信息
+          for (var i = 0; i < H; i += gridX) {
+            for (var j = 0; j < W; j += gridY) {
+              if (buffer[i * W + j]) {
+                this.placement.push(new Particle(j, i))
+              }
+            }
+          }
+        }
+      }
+
+      // 删除画布内容，并以透明颜色填充
+      function clear(test) {
+        cxt.clearRect(0, 0, W, H)
+      }
+
+      function randomInt(min, max) {
+        return Math.floor(min + Math.random() * (max - min + 1))
+      }
+
+      setInterval(function (){
+        window.location.reload()
+      }, 2000)
+
+      // 实例化时钟
+      let clock = new Clock()
+      // setInterval(clock.drawClock.bind(clock), 1000)
+      clock.drawClock()
+      clock.getValue()
+      // 收集时钟数据
+      (function drawFrame() {
+        // 每次绘制调用自身
+        window.requestAnimationFrame(drawFrame)
+        clear()
+        for (var i = 0; i < clock.placement.length; i++) {
+          // 绘制粒子时钟
+          clock.placement[i].drawParticle()
+        }
+      }())
+    }
+  </script>
+</body>
+
+</html>
